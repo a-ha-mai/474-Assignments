@@ -1,0 +1,1 @@
+The speaker clicks when the the external and on-board LED change states alternatively

@@ -1,0 +1,1 @@
+Speaker clicks and external LED flashes at the same time, every 2ms. 
