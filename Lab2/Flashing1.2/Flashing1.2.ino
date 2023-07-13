@@ -12,15 +12,15 @@ void setup() {
 
 void loop() {
   // Flash the LEDs in a sequential pattern
-  digitalWrite(LED_1_PIN, HIGH);
+  digitalWrite(LED_1_PIN, HIGH); // Pin 47 on for 333ms 
   delay(333);
-  digitalWrite(LED_1_PIN, LOW);
+  digitalWrite(LED_1_PIN, LOW);// Pin 47 on for 666ms 
 
-  digitalWrite(LED_2_PIN, HIGH);
+  digitalWrite(LED_2_PIN, HIGH);// Pin 48 on for 333ms 
   delay(333);
-  digitalWrite(LED_2_PIN, LOW);
+  digitalWrite(LED_2_PIN, LOW);// Pin 48 on for 666ms 
 
-  digitalWrite(LED_3_PIN, HIGH);
+  digitalWrite(LED_3_PIN, HIGH);// Pin 49 on for 333ms 
   delay(333);
-  digitalWrite(LED_3_PIN, LOW);
+  digitalWrite(LED_3_PIN, LOW);// Pin 49 on for 666ms 
 }

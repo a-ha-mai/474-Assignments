@@ -15,7 +15,7 @@ void setup() {
   
   // Set Timer/Counter4 prescaler to 64 (desired frequency range)
   TCCR4B |= (1 << CS41) | (1 << CS40);
-  
+  // set the speaker pin as an output 
   bit_set(SPEAKER_DDR, SPEAKER_PIN);
 }
 
@@ -35,11 +35,11 @@ void bit_clear(volatile uint8_t& reg, uint8_t bit) {
   reg &= ~(1 << bit);
 }
 //generate a square wave tone of a specific frequency for a given duration.
-//F_CPU represents the CPU clock frequency- specifies the operating frequency- if F_CPU is defined as 16 MHz, it means the CPU is running at a frequency of 16 million cycles per second.
-//64UL is the prescaler value. It represents a division factor applied to the CPU clock frequency to determine the timer's input clock frequency. In this case, 64UL represents a prescaler value of 64.
+//F_CPU represents the CPU clock frequency- specifies the operating frequency- 
+//64UL is the prescaler value. It represents a division factor applied to the CPU clock frequency to determine the timer's input clock frequency.  
 //determine the number of clock cycles required for each cycle of the waveform based on the CPU clock frequency
 void playTone(unsigned int freq, unsigned long duration) {
-  unsigned long period = F_CPU / (64UL * freq); // The division by 64 is based on the prescaler value used in the timer configuration.
+  unsigned long period = F_CPU / (64UL * freq); // 64UL represents a prescaler value of 64. The division by 64 is based on the prescaler value used in the timer configuration.
   unsigned long startTime = millis();
 //generate the tone for the specified duration  
   while (millis() - startTime < duration) {
