@@ -64,33 +64,35 @@ void loop(){
 void spiTransfer(volatile byte opcode, volatile byte data){
   int offset = 0; //only 1 device
   int maxbytes = 2; //16 bits per SPI command
-  // This for loop is used to initialize or "zero out" the spidata array. 
+  // This for loop is used to zero out the spidata array. 
   //The loop iterates maxbytes times, which is the number of elements in the spidata array. Each element of the spidata array is set to 0 using the assignment statement spidata[i] = (byte)0;.
   for(int i = 0; i < maxbytes; i++) { //zero out spi data
     spidata[i] = (byte)0;
   }
   //load in spi data
-  spidata[offset+1] = opcode+1;// we are using LED e
+  //The variable specifies the index for spidata 
   spidata[offset] = data;
+  // clears 
   bit_clear(BOARD_PORT, CS_PIN);
   for(int i=maxbytes;i>0;i--)
     shiftOut(DIN, CLK, MSBFIRST, spidata[i-1]); //shift out 1 byte of data starting with leftmost bit
+  // this sets the port L and CS pin which enables the peripheral connection with LED display  
   bit_set(BOARD_PORT, CS_PIN);
 }
-
+//objective: read the analog data from the joystick's X and Y axes and convert them into digital coordinates
 int* findCoordinates() {
-  int* coordinates = new int[2];
-  int xReading = analogRead(JOY_X);
-  int yReading = analogRead(JOY_Y);
-  coordinates[0] = xReading / 128;
-  coordinates[1] = yReading / 128;
+  int* coordinates = new int[2];// Declaring a new integer array of size 2 dynamically 
+  int xReading = analogRead(JOY_X);//reads the analog value from the pin connected to the X-axis of the joystick 
+  int yReading = analogRead(JOY_Y);//reads the analog value from the pin connected to the y-axis of the joystick 
+  coordinates[0] = xReading / 128; //calculates the X-coordinate by dividing input of 1024 bit by 128 to get 8 bits data 
+  coordinates[1] = yReading / 128;//calculates the Y-coordinate by dividing input of 1024 bit by 128 to get 8 bits data 
   return coordinates;
 }
-
+// set bits to 1 using bitwise OR 
 void bit_set(volatile uint8_t& reg, uint8_t bit) {
   reg |= (1 << bit);
 }
-
+// set bits to 0 using bitwise AND 
 void bit_clear(volatile uint8_t& reg, uint8_t bit) {
   reg &= ~(1 << bit);
 }

@@ -7,7 +7,7 @@
 #define LED_PORT PORTL
 #define LED_DDR DDRL
 
-// Note Frequencies
+// Note Frequencies 
 #define NC 261
 #define ND 294
 #define NE 329
@@ -18,12 +18,14 @@
 #define NC2 523
 #define R 0
 
-// Global flags
+// Global flags for each task
 volatile bool taskAActive;
 volatile bool taskBActive;
+
 void setup() {
+// Setting the pins as outputs
   LED_DDR |= (1 << LED_1) | (1 << LED_2) |(1 << LED_3);
-  // Set Waveform Generation Mode (WGM) to Fast PWM mode (Mode 14)
+  // Set Waveform Generation bits (WGM) to Fast PWM mode to timer 4
   TCCR4A = (1 << WGM41) | (1 << WGM40);
   TCCR4B = (1 << WGM43) | (1 << WGM42);
   
@@ -32,7 +34,7 @@ void setup() {
   
   // Set Timer/Counter4 prescaler to 64 (desired frequency range)
   TCCR4B |= (1 << CS41) | (1 << CS40);
-  
+  // set the speaker pin as output 
   bit_set(SPEAKER_DDR, SPEAKER_PIN);
   taskAActive = false;
   taskBActive = false;
@@ -46,29 +48,32 @@ void loop() {
   
   taskAActive = true;  // Start Task A
   startTime = millis();
+  //while loop continues until the task A duration is reached 
   while (millis() - startTime < taskATime) {
     ledCycle();
   }
   taskAActive = false;  // Stop Task A
   
-  taskBActive = true;
+  taskBActive = true; // Starts Task B
   startTime = millis();
+  // Continue while depending on the frequency variable returned from speakercycle()
   while (millis() - startTime < taskBTime) {
     int freq = speakerCycle();
     if (freq == 0) {
       OCR4A = 0;
     } else {
-      OCR4A = (F_CPU / (64UL * freq)) / 2;
+      OCR4A = (F_CPU / (64UL * freq)) / 2; //The value of OCR4A is set according to the frequency returned from speakerCycle()
     }
   }
   OCR4A = 0;
-  taskBActive = false;
+  taskBActive = false; // halt task B
   
   // Task A and Task B run simultaneously for 10 seconds
   taskAActive = true;  // Start Task A
-  taskBActive = true;
+  taskBActive = true; // Start Task B
   startTime = millis();
-  while (millis() - startTime < taskABTime) {
+  //As long the TaskAB time is not reaches the LED cycle and speaker cycle will run 
+  while (millis() - startTime < taskABTime) { 
     ledCycle();
     int freq = speakerCycle();
     if (freq == 0) {
@@ -83,13 +88,15 @@ void loop() {
   
   delay(downtime);  // No tasks for 1 second
 }
+// sets bits in a register
 void bit_set(volatile uint8_t& reg, uint8_t bit) {
   reg |= (1 << bit);
 }
+// clears bits in a register
 void bit_clear(volatile uint8_t& reg, uint8_t bit) {
   reg &= ~(1 << bit);
 }
-
+// function defn for speaker to iterate over 
 int speakerCycle() {
   int melody[] = { NE, R, ND, R, NC, R, ND, R, NE, R, NE, R, NE, R, ND, R, ND, R, ND, R, NE, R, NG, R, NG, R, NE, R, ND, R, NC, R, ND, R, NE, R, NE, R, NE, R, NE, R, ND, R, ND, R, NE, R, ND, R, NC, R};
   int beats[] =  { 5, 1,  5, 1,  5, 1,  5, 1,  5, 1,  5, 1,  13, 1,  5, 1,  5, 1,  13, 1,  5, 1,  5, 1,  13, 1,  5, 1,  5, 1,  5, 1,  5, 1,  5, 1,  5, 1,  5, 1,  5, 1,  5, 1,  5, 1,  5, 1,  5, 1,  26, 1};
@@ -99,22 +106,22 @@ int speakerCycle() {
   int freq;
 
   if (taskBActive) {
-    int noteDuration = 50 * beats[noteIndex];
-    int freq = melody[noteIndex];
-    
+    int noteDuration = 50 * beats[noteIndex]; // mutiplied the array to reach 10,000 which is task A and B duration 
+    int freq = melody[noteIndex]; // sets freq as melody at that index
+    // increments through the melody and beats index after note durtion excessed 
     if (millis() - currentTime >= noteDuration) {
       noteIndex = (noteIndex + 1) % melodyLength;
       currentTime = millis();
     }
-
-    return freq;
+  // returns the freq for the loop() 
+    return freq; // returns frequency to be used in the loop()
   } else {
     noteIndex = 0;
     currentTime = millis();
     return 0; // No sound
   }
 }
-
+// Instead of using delay, we use if conditonals with time intervals to keep LEDs flashing with the given period 
 void ledCycle() {
    if (taskAActive) {
     int interval = 999;

@@ -74,9 +74,9 @@ void loop(){
   uint8_t rowControl = 0;
   int freq = speakerCycle();
   long currentTime;
-  int prevx;
-  int prevy;
-  
+
+  // board clear was moved from fter bit-clear to the beginning --> for loop 
+
   for (int i = 0; i < 8; i++) {
     spiTransfer(i, 0);
   }
