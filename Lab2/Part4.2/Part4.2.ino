@@ -1,40 +1,41 @@
-#define OP_DECODEMODE  8
-#define OP_SCANLIMIT   10
-#define OP_SHUTDOWN    11
-#define OP_DISPLAYTEST 14
-#define OP_INTENSITY   10
+#define OP_DECODEMODE  8  // Control operation opcode for setting decode mode
+#define OP_SCANLIMIT   10 // Control operation opcode for setting scan limit
+#define OP_SHUTDOWN    11 // Control operation opcode for setting shutdown mode
+#define OP_DISPLAYTEST 14 // Control operation opcode for display test
+#define OP_INTENSITY   10 // Control operation opcode for setting intensity
 
 // 8x8 Pins
-#define DIN 47 // PL2
-#define CS  48 // PL1
-#define CLK 49 // PL0
-#define DIN_PIN PL2
-#define CS_PIN PL1
-#define CLK_PIN PL0
-#define BOARD_PORT PORTL
-#define BOARD_DDR DDRL
+#define DIN 47 // PL2 - Pin number for data input
+#define CS  48 // PL1 - Pin number for chip select
+#define CLK 49 // PL0 - Pin number for clock
+#define DIN_PIN PL2 // Data input pin on the board
+#define CS_PIN PL1 // Chip select pin on the board
+#define CLK_PIN PL0 // Clock pin on the board
+#define BOARD_PORT PORTL // Port for the board
+#define BOARD_DDR DDRL // Data direction register for the board
+
 
 // Joystick Pins
-#define JOY_X PF0 // A0
-#define JOY_Y PF1 // A1
-#define JOY_PORT PORTF
-#define JOY_DDR DDRF
+#define JOY_X PF0 // A0 - Pin number for joystick X-axis
+#define JOY_Y PF1 // A1 - Pin number for joystick Y-axis
+#define JOY_PORT PORTF // Port for the joystick
+#define JOY_DDR DDRF // Data direction register for the joystick
 
 // Speaker Pins
-#define SPEAKER_PIN PH3 // pin 6
-#define SPEAKER_PORT PORTH
-#define SPEAKER_DDR DDRH
+#define SPEAKER_PIN PH3 // Pin 6 - Pin number for the speaker
+#define SPEAKER_PORT PORTH // Port for the speaker
+#define SPEAKER_DDR DDRH // Data direction register for the speaker
 
 // Note Frequencies
-#define NC 261
-#define ND 294
-#define NE 329
-#define NF 349
-#define NG 392
-#define NA 440
-#define NB 493
-#define NC2 523
-#define R 0
+#define NC 261 // Note frequency for C
+#define ND 294 // Note frequency for D
+#define NE 329 // Note frequency for E
+#define NF 349 // Note frequency for F
+#define NG 392 // Note frequency for G
+#define NA 440 // Note frequency for A
+#define NB 493 // Note frequency for B
+#define NC2 523 // Note frequency for C2
+#define R 0 // Rest
 
 //Transfers 1 SPI command to LED Matrix for given row
 //Input: row - row in LED matrix

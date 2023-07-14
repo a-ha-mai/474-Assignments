@@ -82,7 +82,7 @@ void spiTransfer(volatile byte opcode, volatile byte data){
 //objective: read the analog data from the joystick's X and Y axes and convert them into digital coordinates
 int* findCoordinates() {
   int* coordinates = new int[2];// Declaring a new integer array of size 2 dynamically 
-  int xReading = analogRead(JOY_X);//reads the analog value from the pin connected to the X-axis of the joystick 
+  int xReading = min((1024 - analogRead(JOY_X)), 1023); // reads the inverted analog value from the pin connected to the X-axis of the joystick
   int yReading = analogRead(JOY_Y);//reads the analog value from the pin connected to the y-axis of the joystick 
   coordinates[0] = xReading / 128; //calculates the X-coordinate by dividing input of 1024 bit by 128 to get 8 bits data 
   coordinates[1] = yReading / 128;//calculates the Y-coordinate by dividing input of 1024 bit by 128 to get 8 bits data 
