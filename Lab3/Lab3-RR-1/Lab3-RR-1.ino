@@ -96,4 +96,3 @@ void bit_set(volatile uint8_t& reg, uint8_t bit) {
 void bit_clear(volatile uint8_t& reg, uint8_t bit) {
   reg &= ~(1 << bit);
 }
-
