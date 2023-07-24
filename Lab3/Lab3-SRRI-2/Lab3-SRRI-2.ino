@@ -19,28 +19,28 @@
 
 // Declare function prototypes
 void flashExternalLED();
-int playSpeaker(); // Change the return type to int
+void playSpeaker();
 void bit_set(volatile uint8_t& reg, uint8_t bit);
 void bit_clear(volatile uint8_t& reg, uint8_t bit);
 void sleep_474(int t);
-int schedule_sync();
-int remainingSleepTime;
+void schedule_sync();
 
-void (*taskScheduler[10])() = {flashExternalLED, playSpeaker, NULL}; // Adjust the array size according to the number of tasks
+void (*taskScheduler[11])() = {flashExternalLED, playSpeaker, NULL}; // Adjust the array size according to the number of tasks
 
 // Task states
 enum TaskState {
   READY,
   RUNNING,
   SLEEPING,
-  PENDING,
-  DONE
+  DONE,
+  PENDING
 };
 
-enum TaskState taskStates[10] = {READY, READY, READY}; // Initialize the states for each task
-volatile int sFlag = READY;
+enum TaskState taskStates[11] = {READY, READY, READY}; // Initialize the states for each task
+volatile int sFlag = READY; // Set sFlag to READY initially
 int currentTask = 0;
 int timerCounter = 0;
+int remainingSleepTime; // Declare remainingSleepTime here
 
 void setup() {
   Serial.begin(9600);
@@ -79,7 +79,7 @@ void loop() {
     taskStates[currentTask] = RUNNING;
 
     // Increment the currentTask and timerCounter
-    currentTask = (currentTask + 1) % 10;
+    currentTask = (currentTask + 1) % 11;
     timerCounter++;
 
     // Delay for 1ms
@@ -121,14 +121,13 @@ int songCycle() {
   return freq;
 }
 
-int playSpeaker() { // Change the return type to int
+void playSpeaker() {
   int freq = songCycle();
   if (freq == 0) {
     OCR4A = 0;
   } else {
     OCR4A = (F_CPU / (64UL * freq)) / 2;
   }
-  return remainingSleepTime;
 }
 
 void bit_set(volatile uint8_t& reg, uint8_t bit) {
@@ -141,8 +140,6 @@ void bit_clear(volatile uint8_t& reg, uint8_t bit) {
 
 void sleep_474(int t) {
   taskStates[currentTask] = SLEEPING;
-  taskScheduler[currentTask + 1] = schedule_sync;
-  taskStates[currentTask + 1] = READY;
   remainingSleepTime = t;
   // Store the sleep time for the current task
   // The timer interrupt will handle decrementing the sleep time
@@ -153,10 +150,10 @@ ISR(TIMER4_COMPA_vect) {
   sFlag = DONE;
 }
 
-int schedule_sync() {
+void schedule_sync() {
   while (sFlag == PENDING) {
-    for (int i = 0; i < 10; i++) {
-      if (taskStates[i] == SLEEPING) {
+    for (int i = 0; i < 11; i++) {
+      if (taskStates[i] == DONE) {
         remainingSleepTime -= 2; // Decrement sleep time by 2ms
         if (remainingSleepTime <= 0) {
           taskStates[i] = READY; // Wake up the sleeping task
@@ -165,5 +162,4 @@ int schedule_sync() {
     }
     sFlag = PENDING; // Reset sFlag to PENDING
   }
-  return remainingSleepTime;
 }
