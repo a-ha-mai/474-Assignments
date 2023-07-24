@@ -32,7 +32,9 @@ void (*taskScheduler[10])() = {flashExternalLED, playSpeaker, NULL}; // Adjust t
 enum TaskState {
   READY,
   RUNNING,
-  SLEEPING
+  SLEEPING,
+  PENDING,
+  DONE
 };
 
 enum TaskState taskStates[10] = {READY, READY, READY}; // Initialize the states for each task
@@ -147,12 +149,12 @@ void sleep_474(int t) {
 }
 
 ISR(TIMER4_COMPA_vect) {
-  // Set the sFlag to READY
-  sFlag = READY;
+  // Set the sFlag to DONE
+  sFlag = DONE;
 }
 
 int schedule_sync() {
-  while (sFlag == READY) {
+  while (sFlag == PENDING) {
     for (int i = 0; i < 10; i++) {
       if (taskStates[i] == SLEEPING) {
         remainingSleepTime -= 2; // Decrement sleep time by 2ms
@@ -161,7 +163,7 @@ int schedule_sync() {
         }
       }
     }
-    sFlag = SLEEPING; // Reset sFlag to PENDING
+    sFlag = PENDING; // Reset sFlag to PENDING
   }
   return remainingSleepTime;
 }
