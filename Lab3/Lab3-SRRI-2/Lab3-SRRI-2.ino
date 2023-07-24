@@ -17,15 +17,18 @@
 #define g 392
 #define R 0
 
+// Number of tasks
+#define MAX_TASKS 3 // Adjust this based on the number of tasks
+
 // Declare function prototypes
 void flashExternalLED();
 void playSpeaker();
 void bit_set(volatile uint8_t& reg, uint8_t bit);
 void bit_clear(volatile uint8_t& reg, uint8_t bit);
-void sleep_474(int t);
+void sleep_474(int taskIndex, int t);
 void schedule_sync();
 
-void (*taskScheduler[11])() = {flashExternalLED, playSpeaker, NULL}; // Adjust the array size according to the number of tasks
+void (*taskScheduler[MAX_TASKS])(); // Adjust the array size according to the number of tasks
 
 // Task states
 enum TaskState {
@@ -36,11 +39,11 @@ enum TaskState {
   PENDING
 };
 
-enum TaskState taskStates[11] = {READY, READY, READY}; // Initialize the states for each task
+enum TaskState taskStates[MAX_TASKS] = {READY, READY, READY}; // Initialize the states for each task
 volatile int sFlag = READY; // Set sFlag to READY initially
 int currentTask = 0;
 int timerCounter = 0;
-int remainingSleepTime; // Declare remainingSleepTime here
+int remainingSleepTime[MAX_TASKS]; // Declare remainingSleepTime array here for each task
 
 void setup() {
   Serial.begin(9600);
@@ -79,7 +82,7 @@ void loop() {
     taskStates[currentTask] = RUNNING;
 
     // Increment the currentTask and timerCounter
-    currentTask = (currentTask + 1) % 11;
+    currentTask = (currentTask + 1) % MAX_TASKS;
     timerCounter++;
 
     // Delay for 1ms
@@ -138,11 +141,9 @@ void bit_clear(volatile uint8_t& reg, uint8_t bit) {
   reg &= ~(1 << bit);
 }
 
-void sleep_474(int t) {
-  taskStates[currentTask] = SLEEPING;
-  remainingSleepTime = t;
-  // Store the sleep time for the current task
-  // The timer interrupt will handle decrementing the sleep time
+void sleep_474(int taskIndex, int t) {
+  taskStates[taskIndex] = SLEEPING;
+  remainingSleepTime[taskIndex] = t; // Update the remaining sleep time for the specific task
 }
 
 ISR(TIMER4_COMPA_vect) {
@@ -152,14 +153,15 @@ ISR(TIMER4_COMPA_vect) {
 
 void schedule_sync() {
   while (sFlag == PENDING) {
-    for (int i = 0; i < 11; i++) {
-      if (taskStates[i] == DONE) {
-        remainingSleepTime -= 2; // Decrement sleep time by 2ms
-        if (remainingSleepTime <= 0) {
-          taskStates[i] = READY; // Wake up the sleeping task
-        }
+  }
+  for (int i = 0; i < MAX_TASKS; i++) {
+    if (taskStates[i] == SLEEPING) {
+      remainingSleepTime[i] -= 2; // Decrement sleep time by 2ms
+      if (remainingSleepTime[i] <= 0) {
+        taskStates[i] = READY; // Wake up the sleeping task
       }
     }
-    sFlag = PENDING; // Reset sFlag to PENDING
   }
+  sFlag = PENDING; // Reset sFlag to PENDING
 }
+// done and pending for flags only
