@@ -1,4 +1,3 @@
-
 // Define pins and timers for LED and speaker
 #define LED_DDR   DDRL
 #define LED_PORT  PORTL
@@ -19,14 +18,11 @@
 
 // Declare function prototypes
 void flashExternalLED();
-int playSpeaker(); // Change the return type to int
+void playSpeaker(); 
 void bit_set(volatile uint8_t& reg, uint8_t bit);
 void bit_clear(volatile uint8_t& reg, uint8_t bit);
 void sleep_474(int t);
-int schedule_sync();
-int remainingSleepTime;
-
-void (*taskScheduler[MAX_SIZE])() = {flashExternalLED, playSpeaker, schedule_sync, NULL}; // Adjust the array size according to the number of tasks
+void schedule_sync();
 
 // Task states
 enum TaskState {
@@ -37,10 +33,14 @@ enum TaskState {
   DONE
 };
 
+void (*taskScheduler[MAX_SIZE])() = {flashExternalLED, playSpeaker, schedule_sync, NULL}; // Adjust the array size according to the number of tasks
 enum TaskState taskStates[MAX_SIZE] = {READY, READY, READY, NULL}; // Initialize the states for each task
+int taskSleep[MAX_SIZE] = {0, 0, 0};
+unsigned long taskSleepStartTime[MAX_SIZE] = {0, 0, 0};
 volatile int sFlag = READY;
 int currentTask = 0;
 unsigned long timerCounter = 0;
+int x = 0;
 
 void setup() {
   Serial.begin(9600);
@@ -71,12 +71,11 @@ void loop() {
   // Enter the loop when a task is present in the taskScheduler
   while (taskScheduler[currentTask] != NULL) {
     // Run the task if it is not in the SLEEPING state
-    if (taskStates[currentTask] == RUNNING) {
+    if (taskStates[currentTask] != SLEEPING) {
       taskScheduler[currentTask]();
+      // Change the task state to RUNNING
+      taskStates[currentTask] = RUNNING;
     }
-
-    // Change the task state to RUNNING
-    taskStates[currentTask] = RUNNING;
 
     // Increment the currentTask and timerCounter
     currentTask = (currentTask + 1) % 10;
@@ -115,20 +114,24 @@ int songCycle() {
   int playTime;
   
   if (timerCounter - currentTime >= noteDuration) {
-    noteIndex = (noteIndex + 1) % melodyLength;
+    noteIndex++;
     currentTime = timerCounter;
+  }
+  
+  if (noteIndex >= melodyLength) {
+    noteIndex = 0;
+    sleep_474(4000);
   }
   return freq;
 }
 
-int playSpeaker() { // Change the return type to int
+void playSpeaker() {
   int freq = songCycle();
   if (freq == 0) {
     OCR4A = 0;
   } else {
     OCR4A = (F_CPU / (64UL * freq)) / 2;
   }
-  return remainingSleepTime;
 }
 
 void bit_set(volatile uint8_t& reg, uint8_t bit) {
@@ -141,11 +144,8 @@ void bit_clear(volatile uint8_t& reg, uint8_t bit) {
 
 void sleep_474(int t) {
   taskStates[currentTask] = SLEEPING;
-  taskScheduler[currentTask + 1] = schedule_sync;
-  taskStates[currentTask + 1] = READY;
-  remainingSleepTime = t;
-  // Store the sleep time for the current task
-  // The timer interrupt will handle decrementing the sleep time
+  taskSleepStartTime[currentTask] = timerCounter;
+  taskSleep[currentTask] = t;
 }
 
 ISR(TIMER4_COMPA_vect) {
@@ -153,17 +153,21 @@ ISR(TIMER4_COMPA_vect) {
   sFlag = DONE;
 }
 
-int schedule_sync() {
-  while (sFlag == PENDING) {
-    for (int i = 0; i < 10; i++) {
-      if (taskStates[i] == SLEEPING) {
-        remainingSleepTime -= 2; // Decrement sleep time by 2ms
-        if (remainingSleepTime <= 0) {
-          taskStates[i] = READY; // Wake up the sleeping task
-        }
-      }
+void schedule_sync() {
+  // while (sFlag == PENDING) {
+  //   x += 1;
+  // }
+  
+  unsigned long currentTime = timerCounter;
+  
+  if (taskStates[currentTask] == SLEEPING) {
+    unsigned long elapsedTime = currentTime - taskSleepStartTime[currentTask];
+    if (elapsedTime >= taskSleep[currentTask]) {
+      // If the sleep duration has passed, set the task state to READY
+      taskStates[currentTask] = READY;
     }
-    sFlag = PENDING; // Reset sFlag to PENDING
-  }
-  return remainingSleepTime;
+  } else {
+    taskStates[currentTask] = READY;
+  } 
+  sFlag = PENDING; // Reset sFlag to PENDING
 }
