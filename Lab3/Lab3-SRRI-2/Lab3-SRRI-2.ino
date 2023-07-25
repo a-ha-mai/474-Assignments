@@ -15,41 +15,30 @@
 #define g 392
 #define R 0
 
-// Number of tasks
-#define MAX_TASKS 10 // Adjust this based on the number of tasks
-
 // Declare function prototypes
 void flashExternalLED();
-void playSpeaker();
+int playSpeaker(); // Change the return type to int
 void bit_set(volatile uint8_t& reg, uint8_t bit);
 void bit_clear(volatile uint8_t& reg, uint8_t bit);
-void sleep_474(int taskIndex, int t);
-void schedule_sync();
+void sleep_474(int t);
+int schedule_sync();
+int remainingSleepTime;
 
-void (*taskScheduler[MAX_TASKS])(); // Adjust the array size according to the number of tasks
+void (*taskScheduler[10])() = {flashExternalLED, playSpeaker, NULL}; // Adjust the array size according to the number of tasks
 
 // Task states
 enum TaskState {
   READY,
   RUNNING,
   SLEEPING,
-  DONE,
-  PENDING
+  PENDING,
+  DONE
 };
 
-enum TaskState taskStates[MAX_TASKS] = {READY, READY, READY}; // Initialize the states for each task
-volatile int sFlag = READY; // Set sFlag to READY initially
+enum TaskState taskStates[10] = {READY, READY, READY}; // Initialize the states for each task
+volatile int sFlag = READY;
 int currentTask = 0;
 int timerCounter = 0;
-int remainingSleepTime[MAX_TASKS]; // Declare remainingSleepTime array here for each task
-
-// Define a volatile variable for count. Volatile is used for variables that can change 
-// in the background during normal program flow (like in an ISR)
-volatile unsigned int count = 0;
-
-ISR(TIMER1_OVF_vect) {
-    count++;  // Increment the counter
-} 
 
 void setup() {
   Serial.begin(9600);
@@ -71,30 +60,12 @@ void setup() {
   
   // Set Timer/Counter4 Compare Match A value for 2ms interrupt
   OCR4A = F_CPU / 64 / 500 - 1;
-
-  // Initialize Timer1 for counting
-  noInterrupts();          // Disable all interrupts
-  TCCR1A = 0;              // Set entire TCCR1A register to 0
-  TCCR1B = 0;              // Set entire TCCR1B register to 0
-
-  // Set compare match register to desired timer count
-  TCNT1 = 0;               // Initialize counter value to 0
-  TCCR1B |= (1 << CS10);   // Turn on CTC mode with no prescaling
-
-  // Enable timer overflow interrupt
-  TIMSK1 |= (1 << TOIE1);
-
-  interrupts();            // Enable all interrupts
+  
+  // Enable global interrupts
+  sei();
 }
 
 void loop() {
-  noInterrupts();  // Begin critical section
-
-  // Check if count is greater than 20
-  if (count > 20) {
-    digitalWrite(13, HIGH);  // Turn on the LED on pin 13
-  }
-
   // Enter the loop when a task is present in the taskScheduler
   while (taskScheduler[currentTask] != NULL) {
     // Run the task if it is not in the SLEEPING state
@@ -106,14 +77,15 @@ void loop() {
     taskStates[currentTask] = RUNNING;
 
     // Increment the currentTask and timerCounter
-    currentTask = (currentTask + 1) % MAX_TASKS;
+    currentTask = (currentTask + 1) % 10;
     timerCounter++;
 
     // Delay for 1ms
     delay(1);
   }
 
-  interrupts();  // End critical section
+  // Reset the currentTask to 0
+  currentTask = 0;
 }
 
 void flashExternalLED() {
@@ -147,13 +119,14 @@ int songCycle() {
   return freq;
 }
 
-void playSpeaker() {
+int playSpeaker() { // Change the return type to int
   int freq = songCycle();
   if (freq == 0) {
     OCR4A = 0;
   } else {
     OCR4A = (F_CPU / (64UL * freq)) / 2;
   }
+  return remainingSleepTime;
 }
 
 void bit_set(volatile uint8_t& reg, uint8_t bit) {
@@ -164,9 +137,13 @@ void bit_clear(volatile uint8_t& reg, uint8_t bit) {
   reg &= ~(1 << bit);
 }
 
-void sleep_474(int taskIndex, int t) {
-  taskStates[taskIndex] = SLEEPING;
-  remainingSleepTime[taskIndex] = t; // Update the remaining sleep time for the specific task
+void sleep_474(int t) {
+  taskStates[currentTask] = SLEEPING;
+  taskScheduler[currentTask + 1] = schedule_sync;
+  taskStates[currentTask + 1] = READY;
+  remainingSleepTime = t;
+  // Store the sleep time for the current task
+  // The timer interrupt will handle decrementing the sleep time
 }
 
 ISR(TIMER4_COMPA_vect) {
@@ -174,16 +151,17 @@ ISR(TIMER4_COMPA_vect) {
   sFlag = DONE;
 }
 
-void schedule_sync() {
+int schedule_sync() {
   while (sFlag == PENDING) {
-  }
-  for (int i = 0; i < MAX_TASKS; i++) {
-    if (taskStates[i] == SLEEPING) {
-      remainingSleepTime[i] -= 2; // Decrement sleep time by 2ms
-      if (remainingSleepTime[i] <= 0) {
-        taskStates[i] = READY; // Wake up the sleeping task
+    for (int i = 0; i < 10; i++) {
+      if (taskStates[i] == SLEEPING) {
+        remainingSleepTime -= 2; // Decrement sleep time by 2ms
+        if (remainingSleepTime <= 0) {
+          taskStates[i] = READY; // Wake up the sleeping task
+        }
       }
     }
+    sFlag = PENDING; // Reset sFlag to PENDING
   }
-  sFlag = PENDING; // Reset sFlag to PENDING
+  return remainingSleepTime;
 }
