@@ -1,5 +1,3 @@
-#include <avr/io.h>
-#include <avr/interrupt.h>
 
 // Define pins and timers for LED and speaker
 #define LED_DDR   DDRL
@@ -18,7 +16,7 @@
 #define R 0
 
 // Number of tasks
-#define MAX_TASKS 3 // Adjust this based on the number of tasks
+#define MAX_TASKS 10 // Adjust this based on the number of tasks
 
 // Declare function prototypes
 void flashExternalLED();
@@ -45,6 +43,14 @@ int currentTask = 0;
 int timerCounter = 0;
 int remainingSleepTime[MAX_TASKS]; // Declare remainingSleepTime array here for each task
 
+// Define a volatile variable for count. Volatile is used for variables that can change 
+// in the background during normal program flow (like in an ISR)
+volatile unsigned int count = 0;
+
+ISR(TIMER1_OVF_vect) {
+    count++;  // Increment the counter
+} 
+
 void setup() {
   Serial.begin(9600);
   // Set pins as outputs to corresponding DDR
@@ -65,12 +71,30 @@ void setup() {
   
   // Set Timer/Counter4 Compare Match A value for 2ms interrupt
   OCR4A = F_CPU / 64 / 500 - 1;
-  
-  // Enable global interrupts
-  sei();
+
+  // Initialize Timer1 for counting
+  noInterrupts();          // Disable all interrupts
+  TCCR1A = 0;              // Set entire TCCR1A register to 0
+  TCCR1B = 0;              // Set entire TCCR1B register to 0
+
+  // Set compare match register to desired timer count
+  TCNT1 = 0;               // Initialize counter value to 0
+  TCCR1B |= (1 << CS10);   // Turn on CTC mode with no prescaling
+
+  // Enable timer overflow interrupt
+  TIMSK1 |= (1 << TOIE1);
+
+  interrupts();            // Enable all interrupts
 }
 
 void loop() {
+  noInterrupts();  // Begin critical section
+
+  // Check if count is greater than 20
+  if (count > 20) {
+    digitalWrite(13, HIGH);  // Turn on the LED on pin 13
+  }
+
   // Enter the loop when a task is present in the taskScheduler
   while (taskScheduler[currentTask] != NULL) {
     // Run the task if it is not in the SLEEPING state
@@ -89,8 +113,7 @@ void loop() {
     delay(1);
   }
 
-  // Reset the currentTask to 0
-  currentTask = 0;
+  interrupts();  // End critical section
 }
 
 void flashExternalLED() {
@@ -164,4 +187,3 @@ void schedule_sync() {
   }
   sFlag = PENDING; // Reset sFlag to PENDING
 }
-// done and pending for flags only
