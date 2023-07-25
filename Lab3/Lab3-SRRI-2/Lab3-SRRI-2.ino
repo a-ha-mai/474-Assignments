@@ -15,6 +15,8 @@
 #define g 392
 #define R 0
 
+#define MAX_SIZE 10
+
 // Declare function prototypes
 void flashExternalLED();
 int playSpeaker(); // Change the return type to int
@@ -24,7 +26,7 @@ void sleep_474(int t);
 int schedule_sync();
 int remainingSleepTime;
 
-void (*taskScheduler[10])() = {flashExternalLED, playSpeaker, NULL}; // Adjust the array size according to the number of tasks
+void (*taskScheduler[MAX_SIZE])() = {flashExternalLED, playSpeaker, schedule_sync, NULL}; // Adjust the array size according to the number of tasks
 
 // Task states
 enum TaskState {
@@ -35,10 +37,10 @@ enum TaskState {
   DONE
 };
 
-enum TaskState taskStates[10] = {READY, READY, READY}; // Initialize the states for each task
+enum TaskState taskStates[MAX_SIZE] = {READY, READY, READY, NULL}; // Initialize the states for each task
 volatile int sFlag = READY;
 int currentTask = 0;
-int timerCounter = 0;
+unsigned long timerCounter = 0;
 
 void setup() {
   Serial.begin(9600);
