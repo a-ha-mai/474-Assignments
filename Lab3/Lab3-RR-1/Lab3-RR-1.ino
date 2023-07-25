@@ -74,7 +74,7 @@ int songCycle() {
  // When the elapsed time  of the current note is greater than or equal to the noteDuration, it must end. 
   if (timerCounter - currentTime >= noteDuration) {
   // increment leads to playing continuously.  
-    noteIndex = noteIndex++;
+    noteIndex = (noteIndex + 1) % melodyLength;
   //keep track of the starting time of the current note (new) 
     currentTime = timerCounter;
   }

@@ -43,13 +43,14 @@ enum TaskState {
   * @return a struct that contains the characteristics declared within
   */
 struct TCB {
-  int pid;
   void* function;
   int state;
+  int timesRestarted;
 } TCB_struct; // name given to the TCB struct
 
 // Create an array of TCB structures to control the processes
 struct TCB taskScheduler[MAX_SIZE];
+struct TCB deadTaskList[MAX_SIZE];
 
 /**
   * Function initializes pins to output. Also initializes tasks
@@ -75,17 +76,13 @@ void setup() {
   // Set Timer/Counter4 prescaler to 64 (desired frequency range)
   TCCR4B |= (1 << CS41) | (1 << CS40);
 
-  taskScheduler[0].pid = 0;
   taskScheduler[0].function = flashExternalLED;
   taskScheduler[0].state = READY;
+  taskScheduler[0].timesRestarted = 0;
 
-  taskScheduler[1].pid = 1;
   taskScheduler[1].function = playSpeaker;
   taskScheduler[1].state = READY;
-
-  taskScheduler[2].pid = 2;
-  taskScheduler[2].function = NULL;
-  taskScheduler[2].state = NULL;
+  taskScheduler[1].timesRestarted = 0;
 }
 
 /**
@@ -156,18 +153,48 @@ void function_ptr(void* function()) {
 }
 
 /**
-  * This function allows a task to terminate itself by manipulating its TCB
+ * * This function allows a task to terminate itself by manipulating its TCB
+  * A task can call this function to change its own status to DEAD and remove itself
+  * from the tcbList.
   */  
 void task_self_quit() {
-  taskScheduler[currentTask].state = DEAD;
+  // Move this task to the deadTaskList
+  deadTaskList[currentTask] = taskScheduler[currentTask];
+  // Shift down the remaining tasks in taskScheduler
+  for (int i = currentTask; i < MAX_SIZE - 1; i++) {
+    taskScheduler[i] = taskScheduler[i + 1];
+  }
+  // Clear the last element of taskScheduler since it's a duplicate of the previous one
+  taskScheduler[MAX_SIZE - 1].function = NULL;
+  taskScheduler[MAX_SIZE - 1].state = NULL;
+  taskScheduler[MAX_SIZE - 1].timesRestarted = NULL;
 }
 
 /**
-  * This function allows a task to start up another task
-  * @param[task] pointer to task control block struct
+  * This function allows a task to start up another task\
+  * A task can call this function to change the status of a DEAD task to READY,\
+  * effectively "reviving" the task.\
+  * @param[task] pointer to task control block struct\
   */  
 void task_start(TCB* task) {
-  task -> state = READY;
+  // Find the first null entry in the taskScheduler
+  int firstNullIndex;
+  for (int i = 0; i < MAX_SIZE; i++) {
+    if (taskScheduler[i].function == NULL) {
+      firstNullIndex = i;
+      break;
+    }
+  }
+
+  // Set the desired task's state to READY and move it to the taskScheduler
+  task->state = READY;
+  task->timesRestarted++;
+  taskScheduler[firstNullIndex] = *task;
+
+  // Clear the task from the deadTaskList
+  deadTaskList[currentTask].function = NULL;
+  deadTaskList[currentTask].state = NULL;
+  deadTaskList[currentTask].timesRestarted = NULL;
 }
 
 /**
