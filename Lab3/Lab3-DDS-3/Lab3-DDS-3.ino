@@ -12,7 +12,7 @@
 
 #define LED_DDR   DDRL
 #define LED_PORT  PORTL
-#define LED_PIN     PL0 // pin 49
+#define LED_PIN   PL0 // pin 49
 
 #define SPEAKER_PORT PORTH
 #define SPEAKER_DDR  DDRH
@@ -34,7 +34,8 @@ enum TaskState {
   RUNNING,
   SLEEPING,
   DONE,
-  PENDING
+  PENDING,
+  DEAD
 };
 
 /**
@@ -158,7 +159,7 @@ void function_ptr(void* function()) {
   * This function allows a task to terminate itself by manipulating its TCB
   */  
 void task_self_quit() {
-  taskScheduler[currentTask].state = DONE;
+  taskScheduler[currentTask].state = DEAD;
 }
 
 /**

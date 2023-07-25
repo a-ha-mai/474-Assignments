@@ -57,14 +57,14 @@ void flashExternalLED() {
 // playing a sequence of musical notes and uses the timerCounter variable to keep track of the time elapsed since the last note was played
 int songCycle() {
   int melody[] = {E, R, E, R, R, E, R, R, C, R, E, R, R, G, R, R, R, g, R};
-  int beats[]  = {5, 1, 5, 1, 5, 5, 1, 5, 5, 1, 5, 1, 5, 5, 1, 5, 5, 5, 15};
+  int beats[]  = {5, 1, 5, 1, 5, 5, 1, 5, 5, 1, 5, 1, 5, 5, 1, 5, 5, 5, 80};
   // divide the total size of the array by the size of a single element gives the number of elements in the array
   int melodyLength = sizeof(melody) / sizeof(melody[0]);
   //keeps track of the time elapsed since the last note was played
   static long currentTime = timerCounter;
   //keeps track of the index of the current note in the melody 
   static int noteIndex;
-  //  calculates the duration of the current note in milliseconds.
+  // calculates the duration of the current note in milliseconds.
   // It multiplies it by 50 as a scaling factor to convert beats to milliseconds. 
   // how long the current note should be played.
   int noteDuration = 50 * beats[noteIndex];
@@ -74,10 +74,11 @@ int songCycle() {
  // When the elapsed time  of the current note is greater than or equal to the noteDuration, it must end. 
   if (timerCounter - currentTime >= noteDuration) {
   // increment leads to playing continuously.  
-    noteIndex = (noteIndex + 1) % melodyLength;
+    noteIndex = noteIndex++;
   //keep track of the starting time of the current note (new) 
     currentTime = timerCounter;
   }
+
   //set the tone for playing the next melody.
   return freq;
 }
