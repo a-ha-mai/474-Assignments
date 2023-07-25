@@ -43,6 +43,7 @@ enum TaskState {
   * @return a struct that contains the characteristics declared within
   */
 struct TCB {
+  int pid;
   void* function;
   int state;
   int timesRestarted;
@@ -76,10 +77,12 @@ void setup() {
   // Set Timer/Counter4 prescaler to 64 (desired frequency range)
   TCCR4B |= (1 << CS41) | (1 << CS40);
 
+  taskScheduler[0].pid = 0;
   taskScheduler[0].function = flashExternalLED;
   taskScheduler[0].state = READY;
   taskScheduler[0].timesRestarted = 0;
 
+  taskScheduler[0].pid = 1;
   taskScheduler[1].function = playSpeaker;
   taskScheduler[1].state = READY;
   taskScheduler[1].timesRestarted = 0;
@@ -158,6 +161,7 @@ void function_ptr(void* function()) {
   * from the tcbList.
   */  
 void task_self_quit() {
+  taskScheduler[currentTask].state = DEAD;
   // Move this task to the deadTaskList
   deadTaskList[currentTask] = taskScheduler[currentTask];
   // Shift down the remaining tasks in taskScheduler
@@ -165,6 +169,7 @@ void task_self_quit() {
     taskScheduler[i] = taskScheduler[i + 1];
   }
   // Clear the last element of taskScheduler since it's a duplicate of the previous one
+  taskScheduler[MAX_SIZE - 1].pid = NULL;
   taskScheduler[MAX_SIZE - 1].function = NULL;
   taskScheduler[MAX_SIZE - 1].state = NULL;
   taskScheduler[MAX_SIZE - 1].timesRestarted = NULL;
@@ -192,6 +197,7 @@ void task_start(TCB* task) {
   taskScheduler[firstNullIndex] = *task;
 
   // Clear the task from the deadTaskList
+  deadTaskList[currentTask].pid = NULL;
   deadTaskList[currentTask].function = NULL;
   deadTaskList[currentTask].state = NULL;
   deadTaskList[currentTask].timesRestarted = NULL;
