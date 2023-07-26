@@ -41,6 +41,8 @@ volatile int sFlag = READY;
 int currentTask = 0;
 unsigned long timerCounter = 0;
 int x = 0;
+volatile unsigned long remainingSleepTime = 0;
+bool songPlaying = false;
 
 void setup() {
   Serial.begin(9600);
@@ -80,9 +82,11 @@ void loop() {
     // Increment the currentTask and timerCounter
     currentTask = (currentTask + 1) % 10;
     timerCounter++;
-
+    
     // Delay for 1ms
     delay(1);
+    
+    
   }
 
   // Reset the currentTask to 0
@@ -98,6 +102,7 @@ void flashExternalLED() {
       bit_set(LED_PORT, LED_PIN);
     } else {
       bit_clear(LED_PORT, LED_PIN);
+  
     }
   }
 }
@@ -119,16 +124,19 @@ int songCycle() {
   }
   
   if (noteIndex >= melodyLength) {
+    songPlaying = false;
     noteIndex = 0;
-    sleep_474(4000);
+    //sleep_474(4000);
+
+    
   }
   return freq;
 }
 
 void playSpeaker() {
   int freq = songCycle();
-  if (freq == 0) {
-    OCR4A = 0;
+  if (freq == 0 || !songPlaying) {
+    OCR4A = 0; // Silence when freq is 0 or song is not playing
   } else {
     OCR4A = (F_CPU / (64UL * freq)) / 2;
   }
@@ -146,17 +154,34 @@ void sleep_474(int t) {
   taskStates[currentTask] = SLEEPING;
   taskSleepStartTime[currentTask] = timerCounter;
   taskSleep[currentTask] = t;
+  remainingSleepTime = t;
 }
 
+
+
 ISR(TIMER4_COMPA_vect) {
-  // Set the sFlag to DONE
+  // Decrement the remaining sleep time if it's greater than 0
+  if (remainingSleepTime > 0) {
+    remainingSleepTime--;
+  }
+  
+  // Check if the currentTask is in SLEEPING state and the sleep time has elapsed
+  if (taskStates[currentTask] == SLEEPING && remainingSleepTime == 0) {
+    // Set the task state to READY
+    taskStates[currentTask] = READY;
+  }
+  
+  // Increment the timerCounter
+  timerCounter++;
   sFlag = DONE;
 }
 
+
+
 void schedule_sync() {
-  // while (sFlag == PENDING) {
-  //   x += 1;
-  // }
+  while (sFlag == PENDING) {
+    x += 1;
+  }
   
   unsigned long currentTime = timerCounter;
   
