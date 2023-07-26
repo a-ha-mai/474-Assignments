@@ -117,7 +117,7 @@ void flashExternalLED() {
 
 int songCycle() {
   int melody[] = {E, R, E, R, R, E, R, R, C, R, E, R, R, G, R, R, R, g, R};
-  int beats[]  = {5, 1, 5, 1, 5, 5, 1, 5, 5, 1, 5, 1, 5, 5, 1, 5, 5, 5, 15};
+  int beats[]  = {5, 1, 5, 1, 5, 5, 1, 5, 5, 1, 5, 1, 5, 5, 1, 5, 5, 5, 80};
   int melodyLength = sizeof(melody) / sizeof(melody[0]);
   static long currentTime = timerCounter;
   static int noteIndex;
