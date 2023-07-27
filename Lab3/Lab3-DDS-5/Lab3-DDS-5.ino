@@ -30,6 +30,7 @@ unsigned long timerCounter = 0;
 int currentTask = 0;
 int counterValue = 0;
 bool musicPlaying = false;
+int downtimeStart = -1000;
 
 enum TaskState {
   READY,
@@ -124,6 +125,7 @@ void flashExternalLED() {
     bit_clear(LED_PORT, LED_PIN);
   }
 }
+
 int songCycle() {
   int melody[] = {E, R, E, R, R, E, R, R, C, R, E, R, R, G, R, R, R, g, R};
   int beats[]  = {5, 1, 5, 1, 5, 5, 1, 5, 5, 1, 5, 1, 5, 5, 1, 5, 5, 5, 80};
@@ -139,6 +141,16 @@ int songCycle() {
     noteIndex = (noteIndex + 1) % melodyLength;
     currentTime = timerCounter;
   }
+  
+  if (noteIndex == (melodyLength - 1)) {
+    musicPlaying = false;
+    if (timerCounter - downtimeStart >= 4000) {
+      downtimeStart = timerCounter;
+    }
+  } else {
+    musicPlaying = true;
+  }
+  
   return freq;
 }
 
@@ -149,10 +161,8 @@ int songCycle() {
 void playSpeaker() {
   int freq = songCycle();
   if (freq == 0) {
-    musicPlaying = false; // Music is not playing
     OCR4A = 0;
   } else {
-    musicPlaying = true;
     OCR4A = (F_CPU / (64UL * freq)) / 2; //The value of OCR4A is set according to the frequency returned from speakerCycle()
   }
 }
@@ -224,6 +234,17 @@ void bit_clear(volatile uint8_t& reg, uint8_t bit) {
 }
 
 void updateDisplay() {
+  int downtime = 40;
+  
+   if (musicPlaying) {
+    int freq = songCycle();
+    if (freq != 0) { // If music is playing, display the frequency on the 7-Segment display
+      // Display the frequency in Hz
+      sevseg.setNumber(freq, 0);
+    }
+  } else {
+    int deciSecondsElapsed = downtime - ((timerCounter - downtimeStart) / 100);
+    sevseg.setNumber(deciSecondsElapsed, 0);
   static unsigned long timer = millis();
   static int deciSeconds = 0;
   static unsigned long lastNonZeroTime = 0; // New variable to track time since last non-zero frequency
@@ -261,7 +282,8 @@ void updateDisplay() {
         sevseg.setNumber(40, 1); // Show the full countdown
       }
     }
-  }
 
+  }
   sevseg.refreshDisplay(); // Must run repeatedly
+}
 }
