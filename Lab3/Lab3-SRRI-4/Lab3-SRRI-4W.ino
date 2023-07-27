@@ -221,18 +221,7 @@ void bit_clear(volatile uint8_t& reg, uint8_t bit) {
 }
 
 void updateDisplay() {
-  static unsigned long timer = millis();
-  static int deciSeconds = 0;
-  
-  if (millis() - timer >= 10) {
-    timer += 10;
-    deciSeconds++; // 100 milliSeconds is equal to 1 deciSecond
-    
-    if (deciSeconds == 10000) { // Reset to 0 after counting for 1000 seconds.
-      deciSeconds=0;
-    }
-    sevseg.setNumber(deciSeconds, 1);
-  }
-
+  int deciSecondsElapsed = (timerCounter / 100) % 1000;
+  sevseg.setNumber(deciSecondsElapsed, 0);
   sevseg.refreshDisplay(); // Must run repeatedly
 }
