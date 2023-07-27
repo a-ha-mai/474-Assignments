@@ -7,6 +7,8 @@
 #define SPEAKER_DDR  DDRH
 #define SPEAKER_PIN  PH3 // pin 6
 
+#define INTERRUPT_LED_PIN PL1 // pin 48
+
 // Define note frequencies
 #define E 659
 #define C 523
@@ -28,20 +30,29 @@ void schedule_sync();
 enum TaskState {
   READY,
   RUNNING,
-  SLEEPING,
+  SLEEPING
+};
+
+// Flag States
+enum FlagState {
   PENDING,
   DONE
 };
+
 // Array of function pointers to tasks to be executed
 void (*taskScheduler[MAX_SIZE])() = {flashExternalLED, playSpeaker, schedule_sync, NULL}; // Adjust the array size according to the number of tasks
 // Array to keep track of task states (READY, RUNNING, SLEEPING, PENDING, DONE)
-enum TaskState taskStates[MAX_SIZE] = {READY, READY, READY, NULL}; // Initialize the states for each task
+enum TaskState taskStates[MAX_SIZE] = {READY, READY, READY}; // Initialize the states for each task
 // Array to store sleep duration for each task
 int taskSleep[MAX_SIZE] = {0, 0, 0};
 // Array to store the start time of sleep for each task
 unsigned long taskSleepStartTime[MAX_SIZE] = {0, 0, 0};
 // Flag to signal when a task is completed
 volatile int sFlag = READY;
+// A counter that tracks how many times the ISR has run since last interupt LED toggle
+volatile long isrCounter = 0;
+// How many times the ISR should run before the interupt LED gets toggled
+const uint16_t toggleThreshold = 100;
 // Index of the current task being executed
 int currentTask = 0;
 // Variable to keep track of time
@@ -50,10 +61,9 @@ unsigned long timerCounter = 0;
 int x = 0;
 // Setup function, runs once at the start
 void setup() {
-  // Start serial communication with a baud rate of 9600
-  Serial.begin(9600);
   // Set pins as outputs to corresponding DDR
   bit_set(LED_DDR, LED_PIN);
+  bit_set(LED_DDR, INTERRUPT_LED_PIN);
   bit_set(SPEAKER_DDR, SPEAKER_PIN);
   // Set Waveform Generation bits (WGM) to Fast PWM mode to timer 4
   TCCR4A = (1 << WGM41) | (1 << WGM40);
@@ -65,12 +75,15 @@ void setup() {
   // Set Timer/Counter4 prescaler to 64 (desired frequency range)
   TCCR4B |= (1 << CS41) | (1 << CS40);
   
-  // Enable Timer/Counter4 Compare Match A interrupt
-  TIMSK4 |= (1 << OCIE4A);
+  // Set the timer mode and prescaler to achieve 2ms interval for ISR
+  TCCR3A = 0; // Normal operation
+  TCCR3B = (1 << WGM32) | (1 << CS31) | (1 << CS30); // CTC mode, prescaler 64
+  OCR3A = 500; 
   
-  // Set Timer/Counter4 Compare Match A value for 2ms interrupt
-  OCR4A = F_CPU / 64 / 500 - 1;
   
+  // Enable TIMER3 compare match A interrupt
+  TIMSK3 |= (1 << OCIE3A);
+    
   // Enable global interrupts
   sei();
 }
@@ -175,8 +188,13 @@ void sleep_474(int t) {
   taskSleep[currentTask] = t;
 }
 
-ISR(TIMER4_COMPA_vect) {
-  // Set the sFlag to DONE
+ISR(TIMER3_COMPA_vect) {
+  isrCounter++; // Increment the ISR counter
+
+  if (isrCounter >= toggleThreshold) {
+      LED_PORT ^= (1 << INTERRUPT_LED_PIN);
+      isrCounter = 0; // Reset the counter after LED toggle
+  }
   sFlag = DONE;
 }
 
