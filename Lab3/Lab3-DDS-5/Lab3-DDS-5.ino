@@ -30,7 +30,7 @@ unsigned long timerCounter = 0;
 int currentTask = 0;
 int counterValue = 0;
 bool musicPlaying = false;
-int downtimeStart = -1000;
+long downtimeStart = -1000;
 
 enum TaskState {
   READY,
@@ -236,7 +236,7 @@ void bit_clear(volatile uint8_t& reg, uint8_t bit) {
 void updateDisplay() {
   int downtime = 40;
   
-   if (musicPlaying) {
+  if (musicPlaying) {
     int freq = songCycle();
     if (freq != 0) { // If music is playing, display the frequency on the 7-Segment display
       // Display the frequency in Hz
@@ -245,45 +245,6 @@ void updateDisplay() {
   } else {
     int deciSecondsElapsed = downtime - ((timerCounter - downtimeStart) / 100);
     sevseg.setNumber(deciSecondsElapsed, 0);
-  static unsigned long timer = millis();
-  static int deciSeconds = 0;
-  static unsigned long lastNonZeroTime = 0; // New variable to track time since last non-zero frequency
-
-  if (musicPlaying) {
-    // If music is playing, display the frequency on the 7-Segment display
-    int freq = songCycle();
-    if (freq == 0) {
-      // Display 0 if no frequency (rest)
-      sevseg.setNumber(0);
-      // Start counting the time since the frequency became zero
-      lastNonZeroTime = millis();
-    } else {
-      // Display the frequency in decimal Hz
-      sevseg.setNumber(freq, 0);
-    }
-  } else {
-    // If music is not playing, display the countdown in 10ths of a second
-    if (millis() - timer >= 100) {
-      timer += 100;
-      deciSeconds++; // 100 milliSeconds is equal to 1 deciSecond
-
-      // Countdown from 4 seconds (400 deciSeconds)
-      if (deciSeconds >= 40) {
-        musicPlaying = true; // Start playing music again after the countdown
-        deciSeconds = 0; // Reset the countdown
-      }
-
-      // Check if the frequency has been zero for more than 50ms
-      if (millis() - lastNonZeroTime >= 50) {
-        sevseg.setNumber(40 - deciSeconds, 1); // Display the countdown in 10ths of a second
-      } else {
-        // Reset the countdown as the frequency became non-zero before 50ms elapsed
-        deciSeconds = 0;
-        sevseg.setNumber(40, 1); // Show the full countdown
-      }
-    }
-
   }
   sevseg.refreshDisplay(); // Must run repeatedly
-}
 }
