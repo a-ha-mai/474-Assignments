@@ -1,23 +1,90 @@
-// LED variables 
+/**
+ * @file Lab3_DDS-1.ino
+ * @author Anna Mai (2165101)
+ * @author Paria Naghavi (1441396)
+ * @date 28-July-2023
+ * @brief UW ECE 474 Lab 3 Assignment
+ * 
+ * A Round Robin Scheduler that runs 2 tasks simultaneously:
+ * - Flashing an LED on for 250ms and off for 750ms
+ * - Playing the intro to the Super Mario Bros. theme song repeatedly, with 4 seconds of silence between each play
+ */
+
+/**
+ * @def LED_DDR
+ * @brief This macro defines the DDR corresponding to the LED pin.
+ */
 #define LED_DDR   DDRL
+/**
+ * @def LED_PORT
+ * @brief This macro defines the Port Register corresponding to the LED pin.
+ */
 #define LED_PORT  PORTL
-#define LED_PIN     PL0 // pin 49
-// Speaker variables 
-#define SPEAKER_PORT PORTH
+/**
+ * @def LED_PIN
+ * @brief The pin number (49) the LED is connected to as represented by the Arduino hardware.
+ */
+#define LED_PIN   PL0 // pin 49
+
+
+/**
+ * @def SPEAKER_DDR
+ * @brief This macro defines the DDR corresponding to the Speaker pin.
+ */
 #define SPEAKER_DDR  DDRH
+/**
+ * @def SPEAKER_DDR
+ * @brief This macro defines the Port Register corresponding to the Speaker pin.
+ */
+#define SPEAKER_PORT PORTH
+/**
+ * @def SPEAKER_DDR
+ * @brief The pin number (6) the LED is connected to as represented by the Arduino hardware.
+ */
 #define SPEAKER_PIN  PH3 // pin 6
-// Musical notes and their  frequencies
+
+/**
+ * @def E
+ * @brief The frequency (in Hz) to play for the note E5.
+ */
 #define E 659
+/**
+ * @def C
+ * @brief The frequency (in Hz) to play for the note C5.
+ */
 #define C 523
+/**
+ * @def G
+ * @brief The frequency (in Hz) to play for the note G5.
+ */
 #define G 784
+/**
+ * @def g
+ * @brief The frequency (in Hz) to play for the note G4.
+ */
 #define g 392
+/**
+ * @def R
+ * @brief The frequency (in Hz) to play during a rest.
+ */
 #define R 0
 
+/**
+ * @brief Timer Counter.
+ * 
+ * Stores how long (in ms) it has been since the program started running.
+ * Is used to implement time-based functionalities in the program.
+ */
 unsigned long timerCounter = 0; // Initialize the timerCounter
+
+/**
+ * @brief Initializes pins and timers during setup.
+ */
 void setup() {
   // Set LED pins as outputs on the corresponding DDR
   bit_set(LED_DDR, LED_PIN);
   bit_set(SPEAKER_DDR, SPEAKER_PIN);
+  
   // Set Waveform Generation bits (WGM) to Fast PWM mode to timer 4
   TCCR4A = (1 << WGM41) | (1 << WGM40);
   TCCR4B = (1 << WGM43) | (1 << WGM42);
@@ -29,63 +96,68 @@ void setup() {
   TCCR4B |= (1 << CS41) | (1 << CS40);
 }
 
+/**
+ * @brief Controls the execution of tasks by going through them in order repeatedly.
+ */
 void loop() {
-// this will always run   
   while (1) {
     // Call the flashExternalLED + playSpeaker function
     flashExternalLED();
     playSpeaker();
     // Increment the timerCounter
     timerCounter++;
-    // Delay for 1 second
     delay(1); // 1ms delay
   }
 }
 
-// Function for flashing the external LED
+/**
+ * @brief Flashes the LED connected to pin 49 on for 250ms and off for 750ms
+ */
 void flashExternalLED() {
   const int onInterval = 250;
-  int interval = 1000;   // Total interval (1s) 
-// This value will cycle from 0 to (interval - 1) and then back to 0 and set LED pin bits to 1 on the LED port
+  int interval = 1000;   // Total interval (1s)
+  
+  // Calculate the remainder of the division of timerCounter by interval to determine when to turn the LED on or off.
   if (timerCounter % interval <= onInterval) {
-    bit_set(LED_PORT, LED_PIN);
-   // when greater than onInterval, the LED pin are set to 0  
+    bit_set(LED_PORT, LED_PIN); // Turn the LED on
   } else {
-    bit_clear(LED_PORT, LED_PIN);
+    bit_clear(LED_PORT, LED_PIN); // Turn the LED off
   }
 }
-// playing a sequence of musical notes and uses the timerCounter variable to keep track of the time elapsed since the last note was played
+
+/**
+ * @brief Cycles through a melody array and returns the next frequency to play.
+ * @return The frequency (in Hz) of the next note to be played in the melody.
+ */
 int songCycle() {
+  // Melody and beats arrays represent the notes and their durations
   int melody[] = {E, R, E, R, R, E, R, R, C, R, E, R, R, G, R, R, R, g, R};
   int beats[]  = {5, 1, 5, 1, 5, 5, 1, 5, 5, 1, 5, 1, 5, 5, 1, 5, 5, 5, 80};
-  // divide the total size of the array by the size of a single element gives the number of elements in the array
   int melodyLength = sizeof(melody) / sizeof(melody[0]);
-  //keeps track of the time elapsed since the last note was played
+  
+  // Static variables for keeping track of the current note and time since a note started playing
   static long currentTime = timerCounter;
-  //keeps track of the index of the current note in the melody 
   static int noteIndex;
-  // calculates the duration of the current note in milliseconds.
-  // It multiplies it by 50 as a scaling factor to convert beats to milliseconds. 
-  // how long the current note should be played.
+  
+  // Calculate the duration of the current note in milliseconds
   int noteDuration = 50 * beats[noteIndex];
-  // extracts frequency for the same noteIndex
+  
+  // Retrieve the frequency of the next note to be played
   int freq = melody[noteIndex];
-
- // When the elapsed time  of the current note is greater than or equal to the noteDuration, it must end. 
+  
+  // Play the note for its specified duration
+  // If the elapsed time since the last note is greater than or equal to the duration,
+  // move to the next note and update the current time
   if (timerCounter - currentTime >= noteDuration) {
-  // increment leads to playing continuously.  
     noteIndex = (noteIndex + 1) % melodyLength;
-  //keep track of the starting time of the current note (new) 
     currentTime = timerCounter;
   }
-
-  //set the tone for playing the next melody.
-  return freq;
+  return freq; // Return the frequency of the next note to be played
 }
 
-
- // Function for playing the theme song on the speaker
-// Implement the logic for playing the notes of the song based on the timerCounterSong
+/**
+ * @brief Plays a theme from a song and introduces a sleep interval of 4s between plays.
+ */
 void playSpeaker() {
   // extract freq from songCycle
   int freq = songCycle();
@@ -96,16 +168,24 @@ void playSpeaker() {
   } else {
   // If the frequency is a valid musical note, calculates the value of OCR4A  based on the frequency. 
   // OCR4A controls the output frequency of the speaker 
-
     OCR4A = (F_CPU / (64UL * freq)) / 2; //The value of OCR4A is set according to the frequency returned from speakerCycle()
   }
 }
 
-// set the bit to 1 given bit position and register name
+/**
+ * @brief Set a bit to 1 in the given register at the specified bit position.
+ * @param[in, out] reg The register in which the bit is to be set to 1.
+ * @param[in] bit The bit position (0 to 7) to set to 1 in the register.
+ */ 
 void bit_set(volatile uint8_t& reg, uint8_t bit) {
   reg |= (1 << bit);
 }
-// set the bit to 0 given bit position and register name
+
+/**
+ * @brief Set a bit to 0 in the given register at the specified bit position.
+ * @param[in, out] reg The register in which the bit is to be set to 0.
+ * @param[in] bit The bit position (0 to 7) to set to 0 in the register.
+ */
 void bit_clear(volatile uint8_t& reg, uint8_t bit) {
   reg &= ~(1 << bit);
 }

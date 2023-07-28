@@ -1,0 +1,6 @@
+var searchData=
+[
+  ['c_0',['C',['../_lab3-_d_d_s-3_8c.html#ac4cf4b2ab929bd23951a8676eeac086b',1,'C:&#160;Lab3-DDS-3.c'],['../_lab3-_d_d_s-5_8c.html#ac4cf4b2ab929bd23951a8676eeac086b',1,'C:&#160;Lab3-DDS-5.c'],['../_lab3-_d_d_s-6_8c.html#ac4cf4b2ab929bd23951a8676eeac086b',1,'C:&#160;Lab3-DDS-6.c'],['../_lab3-_r_r-1_8c.html#ac4cf4b2ab929bd23951a8676eeac086b',1,'C:&#160;Lab3-RR-1.c'],['../_lab3-_s_r_r_i-2_8c.html#ac4cf4b2ab929bd23951a8676eeac086b',1,'C:&#160;Lab3-SRRI-2.c'],['../_lab3-_s_r_r_i-4_8c.html#ac4cf4b2ab929bd23951a8676eeac086b',1,'C:&#160;Lab3-SRRI-4.c']]],
+  ['countdownstarttime_1',['countdownStartTime',['../_lab3-_d_d_s-6_8c.html#aa669567821d2f1879a48abd3fc260eb5',1,'Lab3-DDS-6.c']]],
+  ['currenttask_2',['currentTask',['../_lab3-_d_d_s-3_8c.html#a29262345561123351270c8cb57c195cd',1,'currentTask:&#160;Lab3-DDS-3.c'],['../_lab3-_d_d_s-5_8c.html#a29262345561123351270c8cb57c195cd',1,'currentTask:&#160;Lab3-DDS-5.c'],['../_lab3-_d_d_s-6_8c.html#a29262345561123351270c8cb57c195cd',1,'currentTask:&#160;Lab3-DDS-6.c'],['../_lab3-_s_r_r_i-2_8c.html#a29262345561123351270c8cb57c195cd',1,'currentTask:&#160;Lab3-SRRI-2.c'],['../_lab3-_s_r_r_i-4_8c.html#a29262345561123351270c8cb57c195cd',1,'currentTask:&#160;Lab3-SRRI-4.c']]]
+];

@@ -1,21 +1,85 @@
-// Define pins and timers for LED and speaker
+/**
+ * @file Lab3_DDS-2.ino
+ * @author Anna Mai (2165101)
+ * @author Paria Naghavi (1441396)
+ * @date 28-July-2023
+ * @brief UW ECE 474 Lab 3 Assignment
+ * 
+ * A Synchronized Round Robin Scheduler that runs 2 tasks simultaneously:
+ * - Flashing an LED on for 250ms and off for 750ms
+ * - Playing the intro to the Super Mario Bros. theme song repeatedly, with 4 seconds of silence between each play
+ * 
+ * Also includes an Interupt Service Routine that runs every 2ms.
+ * - Every 100 ISR runs, an LED connected to pin 48 will toggle
+ */
+
+/**
+ * @def LED_DDR
+ * @brief This macro defines the DDR corresponding to the LED pin.
+ */
 #define LED_DDR   DDRL
+/**
+ * @def LED_PORT
+ * @brief This macro defines the Port Register corresponding to the LED pin.
+ */
 #define LED_PORT  PORTL
+/**
+ * @def LED_PIN
+ * @brief The pin number (49) the LED is connected to as represented by the Arduino hardware.
+ */
 #define LED_PIN   PL0 // pin 49
-
-#define SPEAKER_PORT PORTH
-#define SPEAKER_DDR  DDRH
-#define SPEAKER_PIN  PH3 // pin 6
-
+/**
+ * @def LED_PIN
+ * @brief The pin number (48) the LED is connected to as represented by the Arduino hardware.
+ */
 #define INTERRUPT_LED_PIN PL1 // pin 48
 
-// Define note frequencies
+/**
+ * @def SPEAKER_DDR
+ * @brief This macro defines the DDR corresponding to the Speaker pin.
+ */
+#define SPEAKER_DDR  DDRH
+/**
+ * @def SPEAKER_DDR
+ * @brief This macro defines the Port Register corresponding to the Speaker pin.
+ */
+#define SPEAKER_PORT PORTH
+/**
+ * @def SPEAKER_DDR
+ * @brief The pin number (6) the LED is connected to as represented by the Arduino hardware.
+ */
+#define SPEAKER_PIN  PH3 // pin 6
+
+/**
+ * @def E
+ * @brief The frequency (in Hz) to play for the note E5.
+ */
 #define E 659
+/**
+ * @def C
+ * @brief The frequency (in Hz) to play for the note C5.
+ */
 #define C 523
+/**
+ * @def G
+ * @brief The frequency (in Hz) to play for the note G5.
+ */
 #define G 784
+/**
+ * @def g
+ * @brief The frequency (in Hz) to play for the note G4.
+ */
 #define g 392
+/**
+ * @def R
+ * @brief The frequency (in Hz) to play during a rest.
+ */
 #define R 0
 
+/**
+ * @def MAX_SIZE
+ * @brief The size of array to initialize for the scheduler's task list.
+ */
 #define MAX_SIZE 10
 
 // Declare function prototypes
@@ -26,45 +90,82 @@ void bit_clear(volatile uint8_t& reg, uint8_t bit);
 void sleep_474(int t);
 void schedule_sync();
 
-// Task states
+/**
+ * @enum TaskState
+ * @brief The various states a task can be in.
+ */
 enum TaskState {
   READY,
   RUNNING,
   SLEEPING
 };
 
-// Flag States
+/**
+ * @enum TaskState
+ * @brief The various states a flag can be in.
+ */
 enum FlagState {
   PENDING,
   DONE
 };
 
-// Array of function pointers to tasks to be executed
+
+/**
+ * @brief Array of function pointers to tasks to be executed.
+ */
 void (*taskScheduler[MAX_SIZE])() = {flashExternalLED, playSpeaker, schedule_sync, NULL}; // Adjust the array size according to the number of tasks
-// Array to keep track of task states (READY, RUNNING, SLEEPING, PENDING, DONE)
+/**
+ * @brief Array to keep track of task states.
+ */
 enum TaskState taskStates[MAX_SIZE] = {READY, READY, READY}; // Initialize the states for each task
-// Array to store sleep duration for each task
+/**
+ * @brief Array to store sleep duration for each task.
+ */
 int taskSleep[MAX_SIZE] = {0, 0, 0};
-// Array to store the start time of sleep for each task
+/**
+ * @brief Array to store the start time of sleep for each task.
+ */
 unsigned long taskSleepStartTime[MAX_SIZE] = {0, 0, 0};
-// Flag to signal when a task is completed
-volatile int sFlag = READY;
-// A counter that tracks how many times the ISR has run since last interupt LED toggle
-volatile long isrCounter = 0;
-// How many times the ISR should run before the interupt LED gets toggled
-const uint16_t toggleThreshold = 100;
-// Index of the current task being executed
-int currentTask = 0;
-// Variable to keep track of time
+/**
+ * @brief Timer Counter.
+ * 
+ * Stores how long (in ms) it has been since the program started running.
+ * Is used to implement time-based functionalities in the program.
+ */
 unsigned long timerCounter = 0;
-//x will be incremented by 1 in each iteration where the program waits until sFlag changes from PENDING 
+/**
+ * @brief Current Task Identifier.
+ * 
+ * Represents the index of what task is being run in the scheduler.
+ */
+int currentTask = 0;
+
+/**
+ * @brief Flag to signal when an ISR is completed.
+ */
+volatile int sFlag = READY;
+/**
+ * @brief A counter that tracks how many times the ISR has run since the last interrupt LED toggle.
+ */
+volatile long isrCounter = 0;
+/**
+ * @brief How many times the ISR should run before the interrupt LED gets toggled.
+ */
+const uint16_t toggleThreshold = 100;
+/**
+ * @brief Variable that is incremented by 1 in each iteration where the program waits until sFlag changes from PENDING.
+ */
 int x = 0;
-// Setup function, runs once at the start
+
+/**
+ * @brief Initializes pins, timers, and interrupts during setup.
+ */
 void setup() {
   // Set pins as outputs to corresponding DDR
   bit_set(LED_DDR, LED_PIN);
   bit_set(LED_DDR, INTERRUPT_LED_PIN);
   bit_set(SPEAKER_DDR, SPEAKER_PIN);
+  
   // Set Waveform Generation bits (WGM) to Fast PWM mode to timer 4
   TCCR4A = (1 << WGM41) | (1 << WGM40);
   TCCR4B = (1 << WGM43) | (1 << WGM42);
@@ -87,9 +188,12 @@ void setup() {
   // Enable global interrupts
   sei();
 }
-// Loop function, runs repeatedly after setup
+
+/**
+ * @brief Controls the execution of tasks based on the process list and scheduler.
+ */
 void loop() {
-  // Enter the loop when a task is present and not null, one of the 3
+  // Enter the loop when a task is present and not null
   while (taskScheduler[currentTask] != NULL) {
     // Run the task if it is not in the SLEEPING state
     if (taskStates[currentTask] != SLEEPING) {
@@ -107,104 +211,128 @@ void loop() {
   currentTask = 0;
 }
 
+/**
+ * @brief Flashes the LED connected to pin 49 on for 250ms and off for 750ms
+ */
 void flashExternalLED() {
   const int onInterval = 250;
   int interval = 1000;   // Total interval (1s)
-
-  if (taskStates[currentTask] == RUNNING) {
-    if (timerCounter % interval <= onInterval) {
-      bit_set(LED_PORT, LED_PIN);
-    } else {
-      bit_clear(LED_PORT, LED_PIN);
-    }
+  
+  // Calculate the remainder of the division of timerCounter by interval to determine when to turn the LED on or off.
+  if (timerCounter % interval <= onInterval) {
+    bit_set(LED_PORT, LED_PIN); // Turn the LED on
+  } else {
+    bit_clear(LED_PORT, LED_PIN); // Turn the LED off
   }
 }
 
+/**
+ * @brief Cycles through a melody array and returns the next frequency to play.
+ * @return The frequency (in Hz) of the next note to be played in the melody.
+ */
 int songCycle() {
-  // chaning the rest element to beat of 80 which yeilds 4s pause between cycles 
+  // Melody and beats arrays represent the notes and their durations
   int melody[] = {E, R, E, R, R, E, R, R, C, R, E, R, R, G, R, R, R, g, R};
   int beats[]  = {5, 1, 5, 1, 5, 5, 1, 5, 5, 1, 5, 1, 5, 5, 1, 5, 5, 5, 80};
   int melodyLength = sizeof(melody) / sizeof(melody[0]);
+  
+  // Static variables for keeping track of the current note and time since a note started playing
   static long currentTime = timerCounter;
   static int noteIndex;
   
+  // Calculate the duration of the current note in milliseconds
   int noteDuration = 50 * beats[noteIndex];
+  
+  // Retrieve the frequency of the next note to be played
   int freq = melody[noteIndex];
-  int playTime;
-  // Check if the current note's duration has elapsed
+  
+  // Play the note for its specified duration
+  // If the elapsed time since the last note is greater than or equal to the duration,
+  // move to the next note and update the current time
   if (timerCounter - currentTime >= noteDuration) {
-  // Move on to the next note in the melody  
     noteIndex++;
-  // Update the current time to the current value of timerCounter
     currentTime = timerCounter;
   }
+  
   // Check if all notes in the melody have been played
   if (noteIndex >= melodyLength) {
-    // If the end of the melody is reached, reset the noteIndex to 0 to start over  
-    
+    // If the end of the melody is reached, reset the noteIndex to 0 to start over
     noteIndex = 0;
-    for (int i = 0; i < MAX_SIZE; i++) {
-    if (taskScheduler[i] == sleep_474) {
-      currentTask = i;
-      break;
-    }
+    // depreciated use of sleep_474 because we found out from TAs that you can hard code the 4s downtime
+    // sleep_474(4000); // 4-second sleep between song cycles
   }
-  //sleep_474(4000); // 4-second sleep between song cycles
-}
-return freq;
+  return freq; // Return the frequency of the next note to be played
 }
 
-// This function is responsible for playing the notes on the speaker.
+/**
+ * @brief Plays a theme from a song and introduces a sleep interval of 4s between plays.
+ */
 void playSpeaker() {
-  // Extract the frequency of the current note from the songCycle() function
+  // extract freq from songCycle
   int freq = songCycle();
-  // Check if the frequency is 0, which means a rest or no note to play
+  //Check if the frequency is 0 (rest) or a valid musical note
   if (freq == 0) {
-    //sleep_474(4000);
-    // Turn off the speaker by setting the Output Compare Register A to 0
+  // If the frequency is 0 (rest), set OCR4A to 0 to produce silence (no sound)
     OCR4A = 0;
   } else {
-    // If it's not a rest, calculate the appropriate OCR4A value to produce the desired frequency
-    // Toggling the speaker on compare match, which controls the frequency of the output
-    OCR4A = (F_CPU / (64UL * freq)) / 2;
+  // If the frequency is a valid musical note, calculates the value of OCR4A  based on the frequency. 
+  // OCR4A controls the output frequency of the speaker 
+    OCR4A = (F_CPU / (64UL * freq)) / 2; //The value of OCR4A is set according to the frequency returned from speakerCycle()
   }
 }
 
+/**
+ * @brief Set a bit to 1 in the given register at the specified bit position.
+ * @param[in, out] reg The register in which the bit is to be set to 1.
+ * @param[in] bit The bit position (0 to 7) to set to 1 in the register.
+ */ 
 void bit_set(volatile uint8_t& reg, uint8_t bit) {
   reg |= (1 << bit);
 }
 
+/**
+ * @brief Set a bit to 0 in the given register at the specified bit position.
+ * @param[in, out] reg The register in which the bit is to be set to 0.
+ * @param[in] bit The bit position (0 to 7) to set to 0 in the register.
+ */
 void bit_clear(volatile uint8_t& reg, uint8_t bit) {
   reg &= ~(1 << bit);
 }
-// This function puts the current task to sleep for a specified duration.
-// The task is marked as SLEEPING, and its sleep start time and sleep duration are recorded.
+
+/**
+ * @brief Puts the current task to sleep for a specified duration.
+ *
+ * This function is currently not being used, as the TAs have said that we can hard code in a 4s sleep in playSpeaker()
+ *
+ * @param[in] t The duration (in some unit) for which the task should sleep.
+ */
 void sleep_474(int t) {
-  // Set the task state to SLEEPING
-  taskStates[currentTask] = SLEEPING;
-  // Record the current time as the start time of sleep
-  taskSleepStartTime[currentTask] = timerCounter;
-  // Set the sleep duration for the current task
-  taskSleep[currentTask] = t;
+  taskStates[currentTask] = SLEEPING; // Set the task state to SLEEPING
+  taskSleepStartTime[currentTask] = timerCounter; // Record the current time as the start time of sleep
+  taskSleep[currentTask] = t; // Set the sleep duration for the current task
 }
 
+/**
+ * @brief Interrupt Service Routine for TIMER3_COMPA vector.
+ */
 ISR(TIMER3_COMPA_vect) {
   isrCounter++; // Increment the ISR counter
-
   if (isrCounter >= toggleThreshold) {
-      LED_PORT ^= (1 << INTERRUPT_LED_PIN);
-      isrCounter = 0; // Reset the counter after LED toggle
+    LED_PORT ^= (1 << INTERRUPT_LED_PIN); // Toggle the interrupt indivator LED
+    isrCounter = 0; // Reset the counter after LED toggle
   }
-  sFlag = DONE;
+  sFlag = DONE; // Set the sFlag to DONE to signal task completion
 }
 
+/**
+ * @brief Synchronizes task scheduling and state transitions.
+ */
 void schedule_sync() {
   while (sFlag == PENDING) {
-    x += 1;
+    x += 1; // Increment the variable x while waiting for sFlag change
   }
-  
-  unsigned long currentTime = timerCounter;
-  
+  unsigned long currentTime = timerCounter; // Get the current time
+  // This current conditional is not being used as the 4s sleep for playSpeaker() has been hardcoded in.
   if (taskStates[currentTask] == SLEEPING) {
     unsigned long elapsedTime = currentTime - taskSleepStartTime[currentTask];
     if (elapsedTime >= taskSleep[currentTask]) {
@@ -212,7 +340,7 @@ void schedule_sync() {
       taskStates[currentTask] = READY;
     }
   } else {
-    taskStates[currentTask] = READY;
+    taskStates[currentTask] = READY; // Set the task state to READY
   } 
-  sFlag = PENDING; // Reset sFlag to PENDING
+  sFlag = PENDING; // Reset sFlag to PENDING for the next synchronization iteration
 }

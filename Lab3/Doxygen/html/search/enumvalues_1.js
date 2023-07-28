@@ -1,0 +1,4 @@
+var searchData=
+[
+  ['pending_0',['PENDING',['../_lab3-_s_r_r_i-2_8c.html#acd4d4db6e96b6c1b0749660de4bfc8c7a1869818fd53ff519eb8e429301bdff73',1,'PENDING:&#160;Lab3-SRRI-2.c'],['../_lab3-_s_r_r_i-4_8c.html#acd4d4db6e96b6c1b0749660de4bfc8c7a1869818fd53ff519eb8e429301bdff73',1,'PENDING:&#160;Lab3-SRRI-4.c']]]
+];

@@ -1,71 +1,133 @@
 /**
- * @file Lab3_DDS.ino
- * @date __date__
- * @brief ECE Lab 3 Assignment
- * @detail University of Washington ECE 474
+ * @file Lab3_DDS-3.ino
+ * @author Anna Mai (2165101)
+ * @author Paria Naghavi (1441396)
+ * @date 28-July-2023
+ * @brief UW ECE 474 Lab 3 Assignment
  * 
- * 
+ * A Data-Driven Scheduler that runs 2 tasks simultaneously:
+ * - Flashing an LED on for 250ms and off for 750ms
+ * - Playing the intro to the Super Mario Bros. theme song repeatedly, with 4 seconds of silence between each play
  */
 
-// Define states for TCB, timers, and periods
-// FILL THESE VALUES ACCORDING TO THE SPECIFICATION GIVEN IN YOUR ASSIGNMENT
-
+/**
+ * @def LED_DDR
+ * @brief This macro defines the DDR corresponding to the LED pin.
+ */
 #define LED_DDR   DDRL
+/**
+ * @def LED_PORT
+ * @brief This macro defines the Port Register corresponding to the LED pin.
+ */
 #define LED_PORT  PORTL
+/**
+ * @def LED_PIN
+ * @brief The pin number (49) the LED is connected to as represented by the Arduino hardware.
+ */
 #define LED_PIN   PL0 // pin 49
 
-#define SPEAKER_PORT PORTH
+
+/**
+ * @def SPEAKER_DDR
+ * @brief This macro defines the DDR corresponding to the Speaker pin.
+ */
 #define SPEAKER_DDR  DDRH
+/**
+ * @def SPEAKER_DDR
+ * @brief This macro defines the Port Register corresponding to the Speaker pin.
+ */
+#define SPEAKER_PORT PORTH
+/**
+ * @def SPEAKER_DDR
+ * @brief The pin number (6) the LED is connected to as represented by the Arduino hardware.
+ */
 #define SPEAKER_PIN  PH3 // pin 6
 
+/**
+ * @def E
+ * @brief The frequency (in Hz) to play for the note E5.
+ */
 #define E 659
+/**
+ * @def C
+ * @brief The frequency (in Hz) to play for the note C5.
+ */
 #define C 523
+/**
+ * @def G
+ * @brief The frequency (in Hz) to play for the note G5.
+ */
 #define G 784
+/**
+ * @def g
+ * @brief The frequency (in Hz) to play for the note G4.
+ */
 #define g 392
+/**
+ * @def R
+ * @brief The frequency (in Hz) to play during a rest.
+ */
 #define R 0
 
+/**
+ * @def MAX_SIZE
+ * @brief The size of array to initialize for the scheduler's task list.
+ */
 #define MAX_SIZE 10
 
+/**
+ * @brief Timer Counter.
+ * 
+ * Stores how long (in ms) it has been since the program started running.
+ * Is used to implement time-based functionalities in the program.
+ */
 unsigned long timerCounter = 0;
+/**
+ * @brief Current Task Identifier.
+ * 
+ * Represents the index of what task is being run in the scheduler.
+ */
 int currentTask = 0;
 
+/**
+ * @enum TaskState
+ * @brief The various states a task can be in.
+ */
 enum TaskState {
-  READY,
-  RUNNING,
-  SLEEPING,
-  DONE,
-  PENDING,
-  DEAD
+  READY,    /**< Task is ready to run. */
+  RUNNING,  /**< Task is currently executing. */
+  SLEEPING, /**< Task is waiting for a specific event or time. */
+  DEAD      /**< Task has been terminated. */
 };
 
 /**
-  * A struct that defines the template of characteristics for one task
-  * @return a struct that contains the characteristics declared within
-  */
+ * @struct TCB
+ * @brief Template for defining characteristics of a task (Thread Control Block).
+ */
 struct TCB {
-  int pid;
-  void* function;
-  int state;
-  int timesRestarted;
-} TCB_struct; // name given to the TCB struct
+  int pid;            /**< Process ID of the task. */
+  void* function;     /**< Function pointer of the task. */
+  int state;          /**< Current state of the task. */
+  int timesRestarted; /**< Number of times the task was restarted. */
+} TCB_struct;
 
-// Create an array of TCB structures to control the processes
+/**
+ * @brief Array of TCB structures for process control.
+ */
 struct TCB taskScheduler[MAX_SIZE];
+/**
+ * @brief Array of TCB structures for terminated tasks.
+ */
 struct TCB deadTaskList[MAX_SIZE];
 
 /**
-  * Function initializes pins to output. Also initializes tasks
-  */
+ * @brief Initializes pins, timers, and tasks during setup.
+ */
 void setup() {
-  // Initialize the required pins as output
-  // Set the required mode and prescalar value
-  // Set the bits of COMnC1, COMnB1, COMnA1 to 0
-  // Set the bits of COMnC0, COMnC0, COMnC0 to 1
-  // Initialize characteristics of tasks in your processList array
-  
   // Set pins as outputs to corresponding DDR
   bit_set(LED_DDR, LED_PIN);
   bit_set(SPEAKER_DDR, SPEAKER_PIN);
+  
   // Set Waveform Generation bits (WGM) to Fast PWM mode to timer 4
   TCCR4A = (1 << WGM41) | (1 << WGM40);
   TCCR4B = (1 << WGM43) | (1 << WGM42);
@@ -77,11 +139,13 @@ void setup() {
   // Set Timer/Counter4 prescaler to 64 (desired frequency range)
   TCCR4B |= (1 << CS41) | (1 << CS40);
 
+  // Initialize first task
   taskScheduler[0].pid = 0;
   taskScheduler[0].function = flashExternalLED;
   taskScheduler[0].state = READY;
   taskScheduler[0].timesRestarted = 0;
 
+  // Initialize second task
   taskScheduler[0].pid = 1;
   taskScheduler[1].function = playSpeaker;
   taskScheduler[1].state = READY;
@@ -89,82 +153,101 @@ void setup() {
 }
 
 /**
-  * Function controls the tasks running dependent on the processList and scheduler
-  * runs flashExternalLED and playSpeaker
-  */
+ * @brief Controls the execution of tasks based on the process list and scheduler.
+ */
 void loop() {
   while(1) {
-    scheduler();
-    timerCounter++;
-    delay(1);
+    scheduler();    // Run the scheduler to manage task execution
+    timerCounter++; // Increment the timer counter to measure elapsed time
+    delay(1);       // Introduce a 1ms delay between each loop iteration
   }
 }
 
-// Function for flashing the external LED
+/**
+ * @brief Flashes the LED connected to pin 49 on for 250ms and off for 750ms
+ */
 void flashExternalLED() {
   const int onInterval = 250;
   int interval = 1000;   // Total interval (1s)
-  // The expression timerCounter % interval calculates the remainder of the division of timerCounter by interval. 
-  // This value will cycle from 0 to (interval - 1) and then back to 0.
+  
+  // Calculate the remainder of the division of timerCounter by interval to determine when to turn the LED on or off.
   if (timerCounter % interval <= onInterval) {
-    bit_set(LED_PORT, LED_PIN);
-    
+    bit_set(LED_PORT, LED_PIN); // Turn the LED on
   } else {
-    bit_clear(LED_PORT, LED_PIN);
+    bit_clear(LED_PORT, LED_PIN); // Turn the LED off
   }
 }
 
-
+/**
+ * @brief Cycles through a melody array and returns the next frequency to play.
+ * @return The frequency (in Hz) of the next note to be played in the melody.
+ */
 int songCycle() {
+  // Melody and beats arrays represent the notes and their durations
   int melody[] = {E, R, E, R, R, E, R, R, C, R, E, R, R, G, R, R, R, g, R};
   int beats[]  = {5, 1, 5, 1, 5, 5, 1, 5, 5, 1, 5, 1, 5, 5, 1, 5, 5, 5, 80};
   int melodyLength = sizeof(melody) / sizeof(melody[0]);
+  
+  // Static variables for keeping track of the current note and time since a note started playing
   static long currentTime = timerCounter;
   static int noteIndex;
   
+  // Calculate the duration of the current note in milliseconds
   int noteDuration = 50 * beats[noteIndex];
-  int freq = melody[noteIndex];
-  int playTime;
   
+  // Retrieve the frequency of the next note to be played
+  int freq = melody[noteIndex];
+  
+  // Play the note for its specified duration
+  // If the elapsed time since the last note is greater than or equal to the duration,
+  // move to the next note and update the current time
   if (timerCounter - currentTime >= noteDuration) {
     noteIndex = (noteIndex + 1) % melodyLength;
     currentTime = timerCounter;
   }
-  return freq;
+  return freq; // Return the frequency of the next note to be played
 }
 
 /**
-  * Function that plays a theme from a song
-  * and then sleeps for a certain amount of time, then plays the theme again
-  */
+ * @brief Plays a theme from a song and introduces a sleep interval of 4s between plays.
+ */
 void playSpeaker() {
+  // extract freq from songCycle
   int freq = songCycle();
+  //Check if the frequency is 0 (rest) or a valid musical note
   if (freq == 0) {
+  // If the frequency is 0 (rest), set OCR4A to 0 to produce silence (no sound)
     OCR4A = 0;
   } else {
+  // If the frequency is a valid musical note, calculates the value of OCR4A  based on the frequency. 
+  // OCR4A controls the output frequency of the speaker 
     OCR4A = (F_CPU / (64UL * freq)) / 2; //The value of OCR4A is set according to the frequency returned from speakerCycle()
   }
 }
 
 /**
-  * This function serves as a function pointer to any given task to execute
-  * @param[function()] function that needs a pointer
-  */   
+ * @brief Function pointer to execute any given task.
+ * @param function A function pointer to the task or function that needs to be executed.
+ *                 The function should have a void return type and take no parameters.
+ */    
 void function_ptr(void* function()) {
-  // Invoke the function passed as parameter here
-  function();
+  function(); // Invoke the function passed as parameter here
 }
 
 /**
- * * This function allows a task to terminate itself by manipulating its TCB
-  * A task can call this function to change its own status to DEAD and remove itself
-  * from the tcbList.
-  */  
+ * @brief Allows a task to terminate itself by manipulating its TCB.
+ * 
+ * This changes the task state to DEAD and removes itself from the taskScheduler
+ * and moved into deadTaskList, which allows for future referencing.
+ */
 void task_self_quit() {
+  // Set the current task's state to DEAD in the taskScheduler
   taskScheduler[currentTask].state = DEAD;
+  
   // Move this task to the deadTaskList
   deadTaskList[currentTask] = taskScheduler[currentTask];
-  // Shift down the remaining tasks in taskScheduler
+  
+  // Shift down the remaining tasks in taskScheduler to remove the terminated task
   for (int i = currentTask; i < MAX_SIZE - 1; i++) {
     taskScheduler[i] = taskScheduler[i + 1];
   }
@@ -176,11 +259,13 @@ void task_self_quit() {
 }
 
 /**
-  * This function allows a task to start up another task\
-  * A task can call this function to change the status of a DEAD task to READY,\
-  * effectively "reviving" the task.\
-  * @param[task] pointer to task control block struct\
-  */  
+ * @brief Allows a task to start up another task by changing its status from DEAD to READY.
+ * 
+ * This also removes the task from deadTaskList, and it to taskScheduler
+ * while also incrementing the the task's timesRestarted parameter by 1.
+ * 
+ * @param task A pointer to the Task Control Block (TCB) of the task to be started.
+ */
 void task_start(TCB* task) {
   // Find the first null entry in the taskScheduler
   int firstNullIndex;
@@ -204,24 +289,36 @@ void task_start(TCB* task) {
 }
 
 /**
-  * This function allows for tasks to be processed and executed
-  */ 
+ * @brief Schedules and executes tasks from the taskScheduler.
+ */
 void scheduler(){
+  // Iterate through the taskScheduler and process each task
   while (taskScheduler[currentTask].function != NULL) {
     if (taskScheduler[currentTask].state != SLEEPING) {
+      // Execute the task's associated function using function_ptr
       function_ptr(taskScheduler[currentTask].function);
+      // Change the task's state to RUNNING during its execution
       taskScheduler[currentTask].state = RUNNING;
     }
-    currentTask++;
+    currentTask++; // Move to the next task in the taskScheduler
   }
-  currentTask = 0;
+  currentTask = 0; // Reset the currentTask to the beginning for the next scheduling cycle
 }
 
-// set the bit to 1 given bit position and register name
+/**
+ * @brief Set a bit to 1 in the given register at the specified bit position.
+ * @param[in, out] reg The register in which the bit is to be set to 1.
+ * @param[in] bit The bit position (0 to 7) to set to 1 in the register.
+ */ 
 void bit_set(volatile uint8_t& reg, uint8_t bit) {
   reg |= (1 << bit);
 }
-// set the bit to 0 given bit position and register name
+
+/**
+ * @brief Set a bit to 0 in the given register at the specified bit position.
+ * @param[in, out] reg The register in which the bit is to be set to 0.
+ * @param[in] bit The bit position (0 to 7) to set to 0 in the register.
+ */
 void bit_clear(volatile uint8_t& reg, uint8_t bit) {
   reg &= ~(1 << bit);
 }
