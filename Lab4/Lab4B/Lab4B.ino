@@ -7,7 +7,7 @@
  * 
  *
  * This file contains a scheduler based in Free RTOS that manage the execution of following tasks:
- * - Flashing an LED on for 250ms and off for 750ms.
+ * - Flashing an LED on for 100ms and off for 200ms.
  * - Playing the intro to the Super Mario Bros. theme song repeatedly, with 4 seconds of silence between each play.
  * - FFT processing of pseudo-random data and measuring computation time.
  */
