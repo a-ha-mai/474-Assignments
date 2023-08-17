@@ -1,7 +1,11 @@
 /**
  * @file Interface.ino
+ * @author Anna Mai (2165101)
+ * @author Paria Naghavi (1441396)
+ * @date 14-August-2023
+ * @brief UW ECE 474 Lab 4 Assignment
  *
- * @brief DinoGame - A simple game interface using FreeRTOS and LiquidCrystal library.
+ * A simple game interface using FreeRTOS and LiquidCrystal library that plays the Dino Game.
  */
 
 #include <Arduino_FreeRTOS.h>
@@ -9,8 +13,7 @@
 
 LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 
-// dino character bitmap
-byte dino [8] = {
+byte dino [8] = { /**< dino character bitmap */
   B00000,
   B00111,
   B00101,
@@ -21,8 +24,7 @@ byte dino [8] = {
   B01100,
 };
 
-// Tree character bitmap
-byte tree [8] = {
+byte tree [8] = { /**< tree character bitmap */
   B00011,
   B11011,
   B11011,

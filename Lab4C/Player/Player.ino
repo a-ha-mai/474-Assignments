@@ -1,7 +1,11 @@
 /**
  * @file Player.ino
+ * @author Anna Mai (2165101)
+ * @author Paria Naghavi (1441396)
+ * @date 14-August-2023
+ * @brief UW ECE 474 Lab 4 Assignment
  *
- * @brief Light Sensing and LED Control using FreeRTOS
+ * Light Sensing and LED Control using FreeRTOS
  */
 
 #include <Arduino_FreeRTOS.h>

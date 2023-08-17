@@ -60,7 +60,9 @@ void TaskRT3p0(void *pvParameters);
 
 
 
-// the setup function runs once when you press reset or power the board
+/**
+ * @brief Setup function to initialize hardware and start the FreeRTOS scheduler.
+ */
 void setup() {
     pinMode(SPEAKER_PIN, OUTPUT);
     Serial.begin(19200);
@@ -107,13 +109,13 @@ void initializeTimer4PWM() {
 }
 
 /**
- * \brief A FreeRTOS task to handle playing sound through a speaker.
+ * @brief A FreeRTOS task to handle playing sound through a speaker.
  *
  * The function uses Timer 4 Pulse Width Modulation (PWM) to control a speaker's sound output.
  * It will cycle through a pre-defined melody and play each note in sequence,
  * taking into account the note's frequency and duration.
  *
- * \param[in] pvParameters A pointer to parameters which is NULL for this function.
+ * @param[in] pvParameters A pointer to parameters which is NULL for this function.
  */
 
 void SpeakerTick(void *pvParameters) {
